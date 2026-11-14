@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/staal0/mise/internal/recipe"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -83,6 +84,21 @@ func TestVersionFooter(t *testing.T) {
 		body := w.Body.String()
 		if !strings.Contains(body, c.label) || (c.link != "" && !strings.Contains(body, c.link)) {
 			t.Errorf("%s: footer missing %q / %q", c.version, c.label, c.link)
+		}
+	}
+}
+
+func TestYieldText(t *testing.T) {
+	for _, c := range []struct{ lang, yield, want string }{
+		{"da", "4", "4 portioner"},
+		{"da", "1", "1 portion"},
+		{"en", "4", "4 servings"},
+		{"en", "1", "1 serving"},
+		{"da", "4 stk.", "4 portioner"},
+		{"da", "en stor gryde", "en stor gryde"},
+	} {
+		if got := yieldText(c.lang, recipe.Yield(c.yield)); got != c.want {
+			t.Errorf("%s %q: got %q, want %q", c.lang, c.yield, got, c.want)
 		}
 	}
 }

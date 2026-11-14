@@ -115,7 +115,9 @@ func inherit(v, base *Recipe) {
 	str(&v.Name, base.Name)
 	str(&v.Description, base.Description)
 	str(&v.Author, base.Author)
-	str(&v.RecipeYield, base.RecipeYield)
+	if v.RecipeYield == "" {
+		v.RecipeYield = base.RecipeYield
+	}
 	str(&v.PrepTime, base.PrepTime)
 	str(&v.CookTime, base.CookTime)
 	str(&v.TotalTime, base.TotalTime)

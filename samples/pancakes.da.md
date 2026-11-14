@@ -1,7 +1,6 @@
 ---
 name: Pandekager
 description: Luftige weekendpandekager.
-recipeYield: 4 portioner
 ---
 
 ## Ingredienser

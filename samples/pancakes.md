@@ -1,7 +1,7 @@
 ---
 name: Pancakes
 description: Fluffy weekend pancakes.
-recipeYield: 4 servings
+recipeYield: 4
 prepTime: PT10M
 cookTime: PT15M
 recipeCategory: [breakfast]

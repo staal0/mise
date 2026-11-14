@@ -64,20 +64,10 @@ func New(dir string) *Server {
 			}
 			return template.HTML(b.String())
 		},
-		"imageURL": imageURL,
-		"num":      func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) },
-		"lower":    strings.ToLower,
-		"yieldUnit": func(y string) string {
-			segs := recipe.SplitQuantity(strings.TrimSpace(y))
-			if len(segs) < 2 || !segs[0].IsQty {
-				return ""
-			}
-			var rest strings.Builder
-			for _, sg := range segs[1:] {
-				rest.WriteString(sg.Text)
-			}
-			return strings.TrimSpace(rest.String())
-		},
+		"imageURL":     imageURL,
+		"num":          func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) },
+		"lower":        strings.ToLower,
+		"yieldText":    yieldText,
 		"versionLabel": func() string { l, _ := versionInfo(); return l },
 		"versionURL":   func() string { _, u := versionInfo(); return u },
 		"lang":         recipe.Lang,
@@ -232,7 +222,7 @@ func (s *Server) show(w http.ResponseWriter, r *http.Request) {
 		}
 		p.Others = append(p.Others, version{url, label})
 	}
-	p.Title, p.R, p.BaseYield = rc.Name, rc, recipe.LeadingNumber(rc.RecipeYield)
+	p.Title, p.R, p.BaseYield = rc.Name, rc, recipe.LeadingNumber(string(rc.RecipeYield))
 	s.render(w, 200, "recipe.html", p)
 }
 
@@ -325,7 +315,7 @@ func jsonLD(rc *recipe.Recipe) template.JS {
 	}
 	set("description", rc.Description)
 	set("inLanguage", rc.Lang)
-	set("recipeYield", rc.RecipeYield)
+	set("recipeYield", string(rc.RecipeYield))
 	set("prepTime", rc.PrepTime)
 	set("cookTime", rc.CookTime)
 	set("totalTime", rc.TotalTime)
@@ -358,6 +348,18 @@ func jsonLD(rc *recipe.Recipe) template.JS {
 	}
 	b, _ := json.Marshal(m)
 	return template.JS(b)
+}
+
+func yieldText(lang string, y recipe.Yield) string {
+	n := recipe.LeadingNumber(string(y))
+	if n == 0 {
+		return string(y)
+	}
+	word := translations[lang]["servings"]
+	if n == 1 {
+		word = translations[lang]["serving"]
+	}
+	return strconv.FormatFloat(n, 'f', -1, 64) + " " + word
 }
 
 func sortFold(l []string) {

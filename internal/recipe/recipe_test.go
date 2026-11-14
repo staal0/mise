@@ -182,3 +182,12 @@ func TestDanishHeadingsSurviveRoundTrip(t *testing.T) {
 		t.Errorf("headings lost:\n%s", md)
 	}
 }
+
+func TestYieldWrittenAsNumber(t *testing.T) {
+	for y, want := range map[Yield]string{"4": "recipeYield: 4\n", "1.5": "recipeYield: 1.5\n", "en gryde": "recipeYield: en gryde\n"} {
+		md, err := (&Recipe{Name: "X", RecipeYield: y}).Markdown()
+		if err != nil || !strings.Contains(string(md), want) {
+			t.Errorf("%q: %v\n%s", y, err, md)
+		}
+	}
+}

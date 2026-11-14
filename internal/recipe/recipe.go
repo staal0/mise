@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -16,7 +17,7 @@ type Recipe struct {
 	Name           string     `yaml:"name"`
 	Description    string     `yaml:"description,omitempty"`
 	Author         string     `yaml:"author,omitempty"`
-	RecipeYield    string     `yaml:"recipeYield,omitempty"`
+	RecipeYield    Yield      `yaml:"recipeYield,omitempty"`
 	PrepTime       string     `yaml:"prepTime,omitempty"`
 	CookTime       string     `yaml:"cookTime,omitempty"`
 	TotalTime      string     `yaml:"totalTime,omitempty"`
@@ -53,6 +54,20 @@ func (r *Recipe) Tags() []string {
 		}
 	}
 	return out
+}
+
+// Yield is the number of portions, written unquoted when it is a number.
+type Yield string
+
+func (y Yield) MarshalYAML() (any, error) {
+	n := &yaml.Node{Kind: yaml.ScalarNode, Value: string(y)}
+	if _, err := strconv.ParseFloat(string(y), 64); err == nil {
+		n.Tag = "!!float"
+		if !strings.Contains(string(y), ".") {
+			n.Tag = "!!int"
+		}
+	}
+	return n, nil
 }
 
 type StringList []string

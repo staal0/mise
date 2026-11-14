@@ -75,7 +75,7 @@ Every push also runs the tests, `golangci-lint` and a `gofmt` check.
 ---
 name: Pancakes
 description: Fluffy weekend pancakes.
-recipeYield: 4 servings
+recipeYield: 4
 prepTime: PT10M
 cookTime: PT15M
 totalTime: PT25M
@@ -121,7 +121,7 @@ Anything else, as normal Markdown.
 - Any other `##` section is rendered as ordinary Markdown.
 - Danish headings work too: `## Ingredienser` and `## Fremgangsmåde`.
 
-**Scaling.** A number at the start of an ingredient line is scaled: `200`, `1,5`, `1.5`, `1 1/2`, `1½`, `½` or a range like `2-3`. Write the amount first if you want it to scale. If `recipeYield` starts with a number, the scaler counts servings; otherwise it shows a multiplier.
+**Scaling.** A number at the start of an ingredient line is scaled: `200`, `1,5`, `1.5`, `1 1/2`, `1½`, `½` or a range like `2-3`. Write the amount first if you want it to scale. `recipeYield` is the number of portions, shown as "4 portioner" or "4 servings" depending on the interface language. The servings picker scales from it. If `recipeYield` is text without a number, it is shown as written and the picker shows a multiplier instead.
 
 ## Languages
 

@@ -30,7 +30,7 @@ func TestFromHTML(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, img := found[0].Recipe, found[0].ImageURL
-	if r.Name != "Tarte & Co" || r.RecipeYield != "4 servings" || r.Author != "Chef" || img != "/img/tarte.jpg" {
+	if r.Name != "Tarte & Co" || r.RecipeYield != "4" || r.Author != "Chef" || img != "/img/tarte.jpg" {
 		t.Errorf("got %+v img=%q", r, img)
 	}
 	if !reflect.DeepEqual([]string(r.Keywords), []string{"tart", "french"}) {
@@ -59,7 +59,7 @@ func TestLooseJSON(t *testing.T) {
 		t.Fatal(found, err)
 	}
 	r := found[0].Recipe
-	if r.RecipeYield != "4 servings" || r.PrepTime != "PT10M" || r.CookTime != "PT1H" || r.Source != "https://example.com/soup" {
+	if r.RecipeYield != "4" || r.PrepTime != "PT10M" || r.CookTime != "PT1H" || r.Source != "https://example.com/soup" {
 		t.Errorf("%+v", r)
 	}
 	if len(r.Ingredients) != 2 || r.Ingredients[1].Title != "Topping" ||
@@ -141,23 +141,21 @@ func TestMicrodata(t *testing.T) {
 	}
 }
 
-func TestServingsWordFollowsLanguage(t *testing.T) {
-	const da = `{"name":"Suppe","recipeServings":4,"recipeIngredient":["1 l vand"],
-	 "recipeInstructions":[{"text":"Kog vandet og kom grøntsagerne i, og lad det simre til de er møre."}]}`
-	found, err := ParseJSON([]byte(da))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := found[0].Recipe.RecipeYield; got != "4 portioner" {
-		t.Errorf("danish: %q", got)
-	}
-	// Too little text to detect: <html lang> decides.
-	const pg = `<html lang="da"><script type="application/ld+json">{"@type":"Recipe","name":"X","recipeServings":1,"recipeIngredient":["salt"]}</script></html>`
-	found, err = ParseHTML(strings.NewReader(pg))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := found[0].Recipe.RecipeYield; got != "1 portion" {
-		t.Errorf("html lang: %q", got)
+func TestYieldIsPortions(t *testing.T) {
+	for _, c := range []struct{ json, want string }{
+		{`"recipeYield":"Makes 12"`, "12"},
+		{`"recipeYield":["4","4 servings"]`, "4"},
+		{`"recipeYield":"items","recipeYieldQuantity":4`, "4"},
+		{`"recipeYield":"","recipeServings":4.0`, "4"},
+		{`"recipeYield":"1,5 liter"`, "1.5"},
+		{`"recipeYield":"en stor gryde"`, "en stor gryde"},
+	} {
+		found, err := ParseJSON([]byte(`{"name":"X","recipeIngredient":["salt"],` + c.json + `}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := string(found[0].Recipe.RecipeYield); got != c.want {
+			t.Errorf("%s: got %q, want %q", c.json, got, c.want)
+		}
 	}
 }

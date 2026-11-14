@@ -37,8 +37,6 @@ type Found struct {
 	imageFS      fs.FS
 	imagePath    string
 	explicitLang bool
-	// servings is the bare count RecipeYield was built from.
-	servings string
 }
 
 func FromURL(ctx context.Context, rawURL string, header http.Header) ([]Found, error) {
@@ -230,9 +228,6 @@ func ParseHTML(body io.Reader) ([]Found, error) {
 		if !found[0].explicitLang {
 			r.HeadingLang = pageLang
 			r.Notes = retitleNotes(r.Notes, pageLang)
-			if found[0].servings != "" {
-				r.RecipeYield = servingsYield(found[0].servings, pageLang)
-			}
 		}
 	}
 	return found[:1], nil // a page is one recipe; extra matches are usually duplicates
@@ -373,22 +368,11 @@ func convert(m map[string]any) Found {
 		Name:           str(first(m, "name", "headline")),
 		Description:    str(m["description"]),
 		Author:         str(m["author"]),
-		RecipeYield:    yield(m["recipeYield"]),
+		RecipeYield:    recipe.Yield(yield(m)),
 		RecipeCategory: list(m["recipeCategory"]),
 		RecipeCuisine:  list(m["recipeCuisine"]),
 		Keywords:       list(first(m, "keywords", "tags")),
 		Source:         str(first(m, "isBasedOn", "orgURL", "source")),
-	}
-	// Some apps split the yield: "4" + "items".
-	if q := str(m["recipeYieldQuantity"]); q != "" && q != "0" && recipe.LeadingNumber(r.RecipeYield) == 0 {
-		r.RecipeYield = strings.TrimSpace(q + " " + r.RecipeYield)
-	}
-	// The word depends on the language, detected below.
-	servings := ""
-	if r.RecipeYield == "" {
-		if s := str(m["recipeServings"]); s != "" && s != "0" {
-			servings = s
-		}
 	}
 	r.PrepTime, _ = recipe.ToISODuration(str(m["prepTime"]))
 	r.CookTime, _ = recipe.ToISODuration(str(first(m, "cookTime", "performTime")))
@@ -407,23 +391,26 @@ func convert(m map[string]any) Found {
 		r.HeadingLang = DetectLang(r)
 	}
 	r.Notes = notes(m, r.HeadingLang)
-	if servings != "" {
-		r.RecipeYield = servingsYield(servings, r.HeadingLang)
-	}
-	return Found{Recipe: r, ImageURL: image(m["image"]), explicitLang: explicit, servings: servings}
+	return Found{Recipe: r, ImageURL: image(m["image"]), explicitLang: explicit}
 }
 
-func yield(v any) string {
-	if l, ok := v.([]any); ok {
-		best := ""
+var numRe = regexp.MustCompile(`\d+(?:[.,]\d+)?`)
+
+func yield(m map[string]any) string {
+	texts := []string{str(m["recipeYield"])}
+	if l, ok := m["recipeYield"].([]any); ok {
+		texts = nil
 		for _, e := range l {
-			if s := str(e); len(s) > len(best) {
-				best = s
-			}
+			texts = append(texts, str(e))
 		}
-		return best
 	}
-	return str(v)
+	texts = append(texts, str(m["recipeYieldQuantity"]), str(m["recipeServings"]))
+	for _, s := range texts {
+		if n := numRe.FindString(s); n != "" && strings.Trim(n, "0.,") != "" {
+			return strings.Replace(n, ",", ".", 1)
+		}
+	}
+	return texts[0]
 }
 
 func image(v any) string {
@@ -602,21 +589,6 @@ func notes(m map[string]any, lang string) string {
 		b.WriteString("## " + h.Notes + "\n\n" + strings.Join(ns, "\n\n") + "\n")
 	}
 	return strings.TrimSpace(b.String())
-}
-
-func servingsYield(n, lang string) string {
-	one := n == "1"
-	switch recipe.Lang(lang) {
-	case "da":
-		if one {
-			return n + " portion"
-		}
-		return n + " portioner"
-	}
-	if one {
-		return n + " serving"
-	}
-	return n + " servings"
 }
 
 func retitleNotes(notes, lang string) string {

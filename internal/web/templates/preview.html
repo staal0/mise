@@ -30,7 +30,7 @@
           {{with $r.PrepTime}}<li><span>{{$T.prep}}</span>{{duration $.Lang .}}</li>{{end}}
           {{with $r.CookTime}}<li><span>{{$T.cook}}</span>{{duration $.Lang .}}</li>{{end}}
           {{with $r.TotalTime}}<li><span>{{$T.total}}</span>{{duration $.Lang .}}</li>{{end}}
-          {{with $r.RecipeYield}}<li><span>{{$T.yield}}</span>{{.}}</li>{{end}}
+          {{with $r.RecipeYield}}<li><span>{{$T.yield}}</span>{{yieldText $.Lang .}}</li>{{end}}
         </ul>
         {{with $r.Tags}}<p class="tags">{{range .}}<span class="tag">{{.}}</span>{{end}}</p>{{end}}
       </div>
