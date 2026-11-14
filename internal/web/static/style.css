@@ -143,7 +143,15 @@ h1 { font-size: clamp(1.7rem, 4vw, 2.5rem); line-height: 1.15; margin: 0 0 8px; 
 /* ---------- cook mode ---------- */
 body.cook { font-size: 22px; }
 body.cook .top, body.cook .hero, body.cook .desc-wrap,body.cook .recipe-head .tags, body.cook .recipe-foot { display: none; }
+body.cook main { padding-top: 16px; }
 body.cook .recipe-head { margin-top: 0; }
+/* One compact row: servings label + exit button. Servings are chosen
+   before cooking, so the stepper is hidden; amounts stay scaled. */
+body.cook .controls { margin: 12px 0 8px; padding: 8px 0; font-size: 1rem; flex-wrap: nowrap; }
+body.cook .scaler button { display: none; }
+body.cook .scaler output { min-width: 0; text-align: left; cursor: default; pointer-events: none; color: var(--muted); }
+body.cook .scaler.plain { visibility: hidden; }
+body.cook .cook-btn { padding: 8px 12px; font-size: .9rem; white-space: nowrap; }
 body.cook h1 { font-size: 1.6rem; }
 body.cook .steps li { padding-block: 14px; }
 body.cook .steps li.current { background: var(--accent-soft); outline: 2px solid var(--accent); }

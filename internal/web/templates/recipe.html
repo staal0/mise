@@ -23,7 +23,7 @@
   </div>
 
   <div class="controls" lang="{{.Lang}}">
-    <div class="scaler" id="scaler" data-base="{{num .BaseYield}}">
+    <div class="scaler{{if not .BaseYield}} plain{{end}}" id="scaler" data-base="{{num .BaseYield}}">
       <button type="button" data-step="-1" aria-label="{{$T.fewer}}">−</button>
       <output id="scale-label">{{if .BaseYield}}{{num .BaseYield}} {{$T.servings}}{{else}}1×{{end}}</output>
       <button type="button" data-step="1" aria-label="{{$T.more}}">+</button>

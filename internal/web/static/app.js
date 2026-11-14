@@ -129,6 +129,8 @@ const T = window.T || {};
       el.classList.toggle("scaled", factor !== 1);
     }
     label.textContent = base ? `${fmt(servings, "dec")} ${T.servings}` : `${fmt(factor, "frac")}×`;
+    // "1×" says nothing; cook mode hides it (style.css: .scaler.plain).
+    scaler.classList.toggle("plain", !base && factor === 1);
   }
 
   for (const el of document.querySelectorAll(".q")) el.dataset.orig = el.textContent;
