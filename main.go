@@ -85,6 +85,7 @@ func main() {
 		addr := fs.String("addr", defAddr, "listen address")
 		_ = fs.Parse(args)
 		mustDir(*dir)
+		web.Version = version
 		srv := &http.Server{Addr: *addr, Handler: web.New(*dir).Handler()}
 		go func() {
 			<-ctx.Done()

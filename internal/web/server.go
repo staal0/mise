@@ -37,6 +37,19 @@ var (
 	mdRenderer = mdhtml.New()
 )
 
+// Version is shown in the page footer; main sets it from the build.
+var Version = "dev"
+
+// versionInfo formats Version for display ("v1.0.1") and links released
+// versions to their release notes.
+func versionInfo() (label, url string) {
+	v := strings.TrimPrefix(Version, "v")
+	if v == "" || v == "dev" || !strings.ContainsAny(v[:1], "0123456789") {
+		return Version, ""
+	}
+	return "v" + v, "https://github.com/staal0/mise/releases/tag/v" + v
+}
+
 type Server struct {
 	Dir   string
 	store *recipe.Store
@@ -55,12 +68,14 @@ func New(dir string) *Server {
 			}
 			return template.HTML(b.String())
 		},
-		"imageURL": imageURL,
-		"num":      func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) },
-		"lower":    strings.ToLower,
-		"lang":     recipe.Lang,
-		"join":     strings.Join,
-		"jsonld":   jsonLD,
+		"imageURL":     imageURL,
+		"num":          func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) },
+		"lower":        strings.ToLower,
+		"versionLabel": func() string { l, _ := versionInfo(); return l },
+		"versionURL":   func() string { _, u := versionInfo(); return u },
+		"lang":         recipe.Lang,
+		"join":         strings.Join,
+		"jsonld":       jsonLD,
 		// searchText covers every language version, so search finds either.
 		"searchText": func(e *recipe.Entry) string {
 			var parts []string

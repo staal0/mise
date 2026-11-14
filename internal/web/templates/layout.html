@@ -21,6 +21,9 @@
 
 {{define "foot"}}
 </main>
+<footer class="site-foot">
+  mise {{with versionURL}}<a href="{{.}}" target="_blank" rel="noopener noreferrer">{{versionLabel}}</a>{{else}}{{versionLabel}}{{end}}
+</footer>
 <script>window.T = {{.T}};</script>
 <script src="/static/app.js"></script>
 </body>

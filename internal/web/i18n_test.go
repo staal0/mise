@@ -70,3 +70,20 @@ func TestNotesMarkdownIsRenderedSafely(t *testing.T) {
 		t.Error("raw HTML from the recipe file was rendered")
 	}
 }
+
+func TestVersionFooter(t *testing.T) {
+	defer func(v string) { Version = v }(Version)
+	for _, c := range []struct{ version, label, link string }{
+		{"dev", "mise dev", ""},
+		{"1.0.1", "v1.0.1", "https://github.com/staal0/mise/releases/tag/v1.0.1"},
+		{"v2.3.0", "v2.3.0", "https://github.com/staal0/mise/releases/tag/v2.3.0"},
+	} {
+		Version = c.version
+		w := httptest.NewRecorder()
+		New("../../samples").Handler().ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
+		body := w.Body.String()
+		if !strings.Contains(body, c.label) || (c.link != "" && !strings.Contains(body, c.link)) {
+			t.Errorf("%s: footer missing %q / %q", c.version, c.label, c.link)
+		}
+	}
+}
