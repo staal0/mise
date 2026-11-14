@@ -1,8 +1,6 @@
 package recipe
 
 import (
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -63,46 +61,36 @@ func splitFilename(name string) (slug, lang string) {
 
 // LoadAll reads every recipe in dir, grouping language versions. Files that
 // fail to parse are reported in errs (keyed by filename) rather than
-// aborting the load.
+// aborting the load. Use a Store to avoid re-reading unchanged files.
 func LoadAll(dir string) (entries []*Entry, errs map[string]error, err error) {
-	paths, err := filepath.Glob(filepath.Join(dir, "*.md"))
-	if err != nil {
-		return nil, nil, err
-	}
-	errs = map[string]error{}
+	return NewStore(dir).All()
+}
+
+// Load returns the entry for slug, or os.ErrNotExist.
+func Load(dir, slug string) (*Entry, error) {
+	return NewStore(dir).Get(slug)
+}
+
+// buildEntries groups parsed files ("frikadeller.md", "frikadeller.en.md")
+// into entries. It works on copies, so the parsed files can be cached and
+// a language version always inherits from the current default file.
+func buildEntries(files map[string]*Recipe) []*Entry {
 	bySlug := map[string]*Entry{}
-	for _, p := range paths {
-		name := filepath.Base(p)
-		if strings.EqualFold(name, "README.md") {
-			continue
-		}
-		data, err := os.ReadFile(p)
-		if err != nil {
-			errs[name] = err
-			continue
-		}
-		slug, lang := splitFilename(name)
-		parseSlug := slug
-		if lang != "" {
-			parseSlug = "" // don't invent a name; inherit it instead
-		}
-		r, err := Parse(parseSlug, data)
-		if err != nil {
-			errs[name] = err
-			continue
-		}
-		r.Slug, r.Lang = slug, lang
-		e := bySlug[slug]
+	for _, parsed := range files {
+		r := new(Recipe)
+		*r = *parsed
+		e := bySlug[r.Slug]
 		if e == nil {
-			e = &Entry{Slug: slug, Versions: map[string]*Recipe{}}
-			bySlug[slug] = e
+			e = &Entry{Slug: r.Slug, Versions: map[string]*Recipe{}}
+			bySlug[r.Slug] = e
 		}
-		if lang == "" {
+		if r.Lang == "" {
 			e.Default = r
 		} else {
-			e.Versions[lang] = r
+			e.Versions[r.Lang] = r
 		}
 	}
+	entries := make([]*Entry, 0, len(bySlug))
 	for _, e := range bySlug {
 		if e.Default == nil {
 			// Only language versions exist: the first one acts as default.
@@ -121,24 +109,7 @@ func LoadAll(dir string) (entries []*Entry, errs map[string]error, err error) {
 	sort.Slice(entries, func(i, j int) bool {
 		return strings.ToLower(entries[i].Default.Name) < strings.ToLower(entries[j].Default.Name)
 	})
-	return entries, errs, nil
-}
-
-// Load returns the entry for slug, or os.ErrNotExist.
-func Load(dir, slug string) (*Entry, error) {
-	entries, errs, err := LoadAll(dir)
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range entries {
-		if e.Slug == slug {
-			return e, nil
-		}
-	}
-	if err := errs[slug+".md"]; err != nil {
-		return nil, err
-	}
-	return nil, os.ErrNotExist
+	return entries
 }
 
 // inherit fills fields left empty in v from base.

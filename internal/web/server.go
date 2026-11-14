@@ -38,8 +38,9 @@ var (
 )
 
 type Server struct {
-	Dir  string
-	tmpl *template.Template
+	Dir   string
+	store *recipe.Store
+	tmpl  *template.Template
 }
 
 func New(dir string) *Server {
@@ -64,7 +65,9 @@ func New(dir string) *Server {
 		"searchText": func(e *recipe.Entry) string {
 			var parts []string
 			for _, r := range e.All() {
-				parts = append(parts, r.Name, r.Description)
+				// Name, tags and ingredients; descriptions are left out
+				// because long ones would bloat every card on the index.
+				parts = append(parts, r.Name)
 				parts = append(parts, r.Tags()...)
 				for _, g := range r.Ingredients {
 					parts = append(parts, g.Items...)
@@ -81,8 +84,9 @@ func New(dir string) *Server {
 		},
 	}
 	return &Server{
-		Dir:  dir,
-		tmpl: template.Must(template.New("").Funcs(funcs).ParseFS(templateFS, "templates/*.html")),
+		Dir:   dir,
+		store: recipe.NewStore(dir),
+		tmpl:  template.Must(template.New("").Funcs(funcs).ParseFS(templateFS, "templates/*.html")),
 	}
 }
 
@@ -96,7 +100,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /r/{slug}", s.show)
 	mux.HandleFunc("POST /import", s.importURL)
 	mux.HandleFunc("POST /import/save", s.saveImport)
-	return logRequests(mux)
+	return logRequests(gzipResponses(mux))
 }
 
 func imageURL(img string) string {
@@ -164,7 +168,7 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 // renderIndex shows the recipe list. msgKey is a translation key, detail is
 // appended to it (e.g. an error message).
 func (s *Server) renderIndex(w http.ResponseWriter, r *http.Request, status int, msg, url string) {
-	entries, errs, err := recipe.LoadAll(s.Dir)
+	entries, errs, err := s.store.All()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -190,7 +194,7 @@ func (s *Server) renderIndex(w http.ResponseWriter, r *http.Request, status int,
 // show renders a recipe in the requested version (?lang=), else the
 // version matching the interface language, else the default.
 func (s *Server) show(w http.ResponseWriter, r *http.Request) {
-	e, err := recipe.Load(s.Dir, r.PathValue("slug"))
+	e, err := s.store.Get(r.PathValue("slug"))
 	if errors.Is(err, os.ErrNotExist) {
 		http.NotFound(w, r)
 		return
