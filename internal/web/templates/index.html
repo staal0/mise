@@ -1,0 +1,46 @@
+{{template "head" .}}
+<section class="toolbar">
+  <input id="search" type="search" placeholder="{{.T.search}}" autocomplete="off" autofocus>
+  <details class="import" {{if .Message}}open{{end}}>
+    <summary>{{.T.importToggle}}</summary>
+    <form method="post" action="/import">
+      <input name="url" type="url" placeholder="https://…" value="{{.URL}}" required>
+      <button>{{.T.importBtn}}</button>
+    </form>
+    {{if .Message}}<p class="error">{{.Message}}</p>{{end}}
+  </details>
+</section>
+
+{{if .Tags}}
+<nav class="tags" id="tags">
+  {{range .Tags}}<button type="button" class="tag" data-tag="{{lower .}}">{{.}}</button>{{end}}
+</nav>
+{{end}}
+
+{{if .Errors}}
+<div class="error">
+  <strong>{{.T.readErrors}}</strong>
+  <ul>{{range $f, $e := .Errors}}<li><code>{{$f}}</code>: {{$e}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<ul class="cards" id="cards">
+{{range .Cards}}{{$r := .R}}
+  <li data-search="{{searchText .E}}" data-tags="{{tagsAttr .E}}">
+    <a href="/r/{{.E.Slug}}">
+      {{if $r.Image}}<img src="{{imageURL $r.Image}}" alt="" loading="lazy">{{else}}<div class="noimg">🍽</div>{{end}}
+      <div class="card-body">
+        <h2 {{with $r.Lang}}lang="{{.}}"{{end}}>{{$r.Name}}</h2>
+        <span class="meta">
+          {{with $r.TotalTime}}⏱ {{duration $.Lang .}}{{else}}{{with $r.CookTime}}⏱ {{duration $.Lang .}}{{end}}{{end}}
+          {{range .E.Langs}}<span class="lang-badge">{{.}}</span>{{end}}
+        </span>
+      </div>
+    </a>
+  </li>
+{{else}}
+  <li class="empty">{{.T.empty}}</li>
+{{end}}
+</ul>
+<p id="nomatch" class="empty" hidden>{{.T.nomatch}}</p>
+{{template "foot" .}}

@@ -1,0 +1,10 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      # Closing something only read from cannot fail in a way we could act
+      # on: the data has already been read (or the read error handled).
+      exclude-functions:
+        - (io.ReadCloser).Close
+        - (io/fs.File).Close

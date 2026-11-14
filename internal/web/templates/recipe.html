@@ -1,0 +1,68 @@
+{{template "head" .}}
+{{$r := .R}}{{$T := .T}}
+<article class="recipe" id="recipe" {{with $r.Lang}}lang="{{.}}"{{end}}>
+  <script type="application/ld+json">{{jsonld $r}}</script>
+
+  <div class="recipe-head">
+    {{if $r.Image}}<img class="hero" src="{{imageURL $r.Image}}" alt="">{{end}}
+    <div>
+      <h1>{{$r.Name}}</h1>
+      {{with .Others}}<p class="versions" lang="{{$.Lang}}">{{$T.alsoIn}} {{range .}}<a href="{{.URL}}">{{.Label}}</a>{{end}}</p>{{end}}
+      {{with $r.Description}}<div class="desc-wrap">
+        <p class="desc clamp" id="desc">{{.}}</p>
+        <button type="button" class="more" id="desc-more" lang="{{$.Lang}}" hidden>{{$T.readMore}}</button>
+      </div>{{end}}
+      <ul class="facts" lang="{{$.Lang}}">
+        {{with $r.PrepTime}}<li><span>{{$T.prep}}</span>{{duration $.Lang .}}</li>{{end}}
+        {{with $r.CookTime}}<li><span>{{$T.cook}}</span>{{duration $.Lang .}}</li>{{end}}
+        {{with $r.TotalTime}}<li><span>{{$T.total}}</span>{{duration $.Lang .}}</li>{{end}}
+        {{with $r.RecipeYield}}<li><span>{{$T.yield}}</span><span {{with $r.Lang}}lang="{{.}}"{{end}}>{{.}}</span></li>{{end}}
+      </ul>
+      {{with $r.Tags}}<p class="tags">{{range .}}<a class="tag" href="/#{{lower .}}">{{.}}</a>{{end}}</p>{{end}}
+    </div>
+  </div>
+
+  <div class="controls" lang="{{.Lang}}">
+    <div class="scaler" id="scaler" data-base="{{num .BaseYield}}">
+      <button type="button" data-step="-1" aria-label="{{$T.fewer}}">−</button>
+      <output id="scale-label">{{if .BaseYield}}{{num .BaseYield}} {{$T.servings}}{{else}}1×{{end}}</output>
+      <button type="button" data-step="1" aria-label="{{$T.more}}">+</button>
+    </div>
+    <button type="button" id="cook" class="cook-btn">{{$T.cookMode}}</button>
+  </div>
+
+  {{with $r.Intro}}<div class="prose">{{markdown .}}</div>{{end}}
+
+  <div class="cols">
+    {{if $r.Ingredients}}
+    <section class="ingredients">
+      <h2 lang="{{$.Lang}}">{{$T.ingredients}}</h2>
+      {{range $r.Ingredients}}
+        {{with .Title}}<h3>{{.}}</h3>{{end}}
+        <ul>
+          {{range .Items}}<li>{{range segments .}}{{if .IsQty}}<span class="q" data-q="{{num .Qty}}" data-s="{{.Style}}">{{.Text}}</span>{{else}}{{.Text}}{{end}}{{end}}</li>{{end}}
+        </ul>
+      {{end}}
+    </section>
+    {{end}}
+
+    {{if $r.Instructions}}
+    <section class="steps">
+      <h2 lang="{{$.Lang}}">{{$T.instructions}}</h2>
+      {{range $r.Instructions}}
+        {{with .Title}}<h3>{{.}}</h3>{{end}}
+        <ol>{{range .Items}}<li>{{.}}</li>{{end}}</ol>
+      {{end}}
+    </section>
+    {{end}}
+  </div>
+
+  {{with $r.Notes}}<div class="prose notes">{{markdown .}}</div>{{end}}
+
+  <footer class="recipe-foot" lang="{{$.Lang}}">
+    {{with $r.Author}}<span>{{$T.by}} {{.}}</span>{{end}}
+    {{with $r.Source}}<a href="{{.}}" target="_blank" rel="noopener noreferrer">{{$T.original}}</a>{{end}}
+    <span class="file">{{$r.Slug}}.md</span>
+  </footer>
+</article>
+{{template "foot" .}}

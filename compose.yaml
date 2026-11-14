@@ -1,0 +1,16 @@
+services:
+  mise:
+    image: ghcr.io/staal0/mise:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - recipes:/recipes
+    # To keep the recipes in a folder on the host instead, use a bind mount
+    # and run as the folder's owner (find the ids with `id -u` and `id -g`):
+    #   user: "1000:1000"
+    #   volumes:
+    #     - ./recipes:/recipes
+
+volumes:
+  recipes:
