@@ -46,6 +46,8 @@ type Found struct {
 	imagePath string
 	// explicitLang is true when the source declared inLanguage.
 	explicitLang bool
+	// servings is the bare count RecipeYield was built from, if any.
+	servings string
 }
 
 // ---------------------------------------------------------------- sources
@@ -249,6 +251,9 @@ func ParseHTML(body io.Reader) ([]Found, error) {
 		if !found[0].explicitLang {
 			r.HeadingLang = pageLang
 			r.Notes = retitleNotes(r.Notes, pageLang)
+			if found[0].servings != "" {
+				r.RecipeYield = servingsYield(found[0].servings, pageLang)
+			}
 		}
 	}
 	return found[:1], nil // a page is one recipe; extra matches are usually duplicates
@@ -405,9 +410,11 @@ func convert(m map[string]any) Found {
 	if q := str(m["recipeYieldQuantity"]); q != "" && q != "0" && recipe.LeadingNumber(r.RecipeYield) == 0 {
 		r.RecipeYield = strings.TrimSpace(q + " " + r.RecipeYield)
 	}
+	// The word for a bare count depends on the language, detected below.
+	servings := ""
 	if r.RecipeYield == "" {
 		if s := str(m["recipeServings"]); s != "" && s != "0" {
-			r.RecipeYield = s + " servings"
+			servings = s
 		}
 	}
 	r.PrepTime, _ = recipe.ToISODuration(str(m["prepTime"]))
@@ -428,7 +435,10 @@ func convert(m map[string]any) Found {
 		r.HeadingLang = DetectLang(r)
 	}
 	r.Notes = notes(m, r.HeadingLang)
-	return Found{Recipe: r, ImageURL: image(m["image"]), explicitLang: explicit}
+	if servings != "" {
+		r.RecipeYield = servingsYield(servings, r.HeadingLang)
+	}
+	return Found{Recipe: r, ImageURL: image(m["image"]), explicitLang: explicit, servings: servings}
 }
 
 // yield prefers a descriptive value ("4 servings") over a bare number.
@@ -627,6 +637,22 @@ func notes(m map[string]any, lang string) string {
 		b.WriteString("## " + h.Notes + "\n\n" + strings.Join(ns, "\n\n") + "\n")
 	}
 	return strings.TrimSpace(b.String())
+}
+
+// servingsYield turns a bare count into "4 portioner" / "4 servings".
+func servingsYield(n, lang string) string {
+	one := n == "1"
+	switch recipe.Lang(lang) {
+	case "da":
+		if one {
+			return n + " portion"
+		}
+		return n + " portioner"
+	}
+	if one {
+		return n + " serving"
+	}
+	return n + " servings"
 }
 
 // retitleNotes swaps the generated Notes/Equipment headings to another language.

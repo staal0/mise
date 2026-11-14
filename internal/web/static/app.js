@@ -100,6 +100,13 @@ const T = window.T || {};
   if (!scaler) return;
   const label = document.getElementById("scale-label");
   const base = parseFloat(scaler.dataset.base) || 0;
+  const unit = scaler.dataset.unit || T.servings;
+  // Singular/plural for "portion(er)" and "serving(s)".
+  const forms = { portion: "portioner", portioner: "portion", serving: "servings", servings: "serving" };
+  const unitFor = (n) => {
+    const plural = n === 1 ? ["portion", "serving"] : ["portioner", "servings"];
+    return plural.includes(unit) || !forms[unit] ? unit : forms[unit];
+  };
   let servings = base;
   let factor = 1;
 
@@ -128,7 +135,7 @@ const T = window.T || {};
       el.textContent = factor === 1 ? el.dataset.orig : fmt(parseFloat(el.dataset.q) * factor, el.dataset.s);
       el.classList.toggle("scaled", factor !== 1);
     }
-    label.textContent = base ? `${fmt(servings, "dec")} ${T.servings}` : `${fmt(factor, "frac")}×`;
+    label.textContent = base ? `${fmt(servings, "dec")} ${unitFor(servings)}` : `${fmt(factor, "frac")}×`;
     // "1×" says nothing; cook mode hides it (style.css: .scaler.plain).
     scaler.classList.toggle("plain", !base && factor === 1);
   }

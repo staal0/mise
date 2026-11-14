@@ -141,3 +141,24 @@ func TestMicrodata(t *testing.T) {
 		t.Errorf("heading lang %q", r.HeadingLang)
 	}
 }
+
+func TestServingsWordFollowsLanguage(t *testing.T) {
+	const da = `{"name":"Suppe","recipeServings":4,"recipeIngredient":["1 l vand"],
+	 "recipeInstructions":[{"text":"Kog vandet og kom grøntsagerne i, og lad det simre til de er møre."}]}`
+	found, err := ParseJSON([]byte(da))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := found[0].Recipe.RecipeYield; got != "4 portioner" {
+		t.Errorf("danish: %q", got)
+	}
+	// Too little text to detect: <html lang> decides.
+	const pg = `<html lang="da"><script type="application/ld+json">{"@type":"Recipe","name":"X","recipeServings":1,"recipeIngredient":["salt"]}</script></html>`
+	found, err = ParseHTML(strings.NewReader(pg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := found[0].Recipe.RecipeYield; got != "1 portion" {
+		t.Errorf("html lang: %q", got)
+	}
+}

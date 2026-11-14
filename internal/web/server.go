@@ -68,9 +68,21 @@ func New(dir string) *Server {
 			}
 			return template.HTML(b.String())
 		},
-		"imageURL":     imageURL,
-		"num":          func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) },
-		"lower":        strings.ToLower,
+		"imageURL": imageURL,
+		"num":      func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) },
+		"lower":    strings.ToLower,
+		// yieldUnit returns "stk." for "4 stk.".
+		"yieldUnit": func(y string) string {
+			segs := recipe.SplitQuantity(strings.TrimSpace(y))
+			if len(segs) < 2 || !segs[0].IsQty {
+				return ""
+			}
+			var rest strings.Builder
+			for _, sg := range segs[1:] {
+				rest.WriteString(sg.Text)
+			}
+			return strings.TrimSpace(rest.String())
+		},
 		"versionLabel": func() string { l, _ := versionInfo(); return l },
 		"versionURL":   func() string { _, u := versionInfo(); return u },
 		"lang":         recipe.Lang,
