@@ -6,6 +6,12 @@ services:
       - "8080:8080"
     volumes:
       - recipes:/recipes
+    # Also built into the image; repeated here to make it visible and tunable.
+    healthcheck:
+      test: ["CMD", "/mise", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
     # To keep the recipes in a folder on the host instead, use a bind mount
     # and run as the folder's owner (find the ids with `id -u` and `id -g`):
     #   user: "1000:1000"
