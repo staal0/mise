@@ -2,7 +2,6 @@
 
 const T = window.T || {};
 
-// ---------- Interface language: cookie read by the server ----------
 (function () {
   const btn = document.getElementById("lang");
   if (!btn) return;
@@ -12,7 +11,6 @@ const T = window.T || {};
   });
 })();
 
-// ---------- Theme: auto (follow system) → light → dark ----------
 (function () {
   const btn = document.getElementById("theme");
   if (!btn) return;
@@ -31,13 +29,12 @@ const T = window.T || {};
     try {
       if (mode === "auto") localStorage.removeItem("theme");
       else localStorage.setItem("theme", mode);
-    } catch (_) { /* storage blocked: choice lasts for this page only */ }
+    } catch (_) { /* storage blocked */ }
     show();
   });
   show();
 })();
 
-// ---------- Index: search + tag filter ----------
 (function () {
   const cards = document.getElementById("cards");
   if (!cards) return;
@@ -76,7 +73,6 @@ const T = window.T || {};
   apply();
 })();
 
-// ---------- Recipe: "Read more" for long descriptions ----------
 (function () {
   const desc = document.getElementById("desc");
   const more = document.getElementById("desc-more");
@@ -94,7 +90,6 @@ const T = window.T || {};
   check();
 })();
 
-// ---------- Recipe: scaling ----------
 (function () {
   const scaler = document.getElementById("scaler");
   if (!scaler) return;
@@ -136,7 +131,7 @@ const T = window.T || {};
       el.classList.toggle("scaled", factor !== 1);
     }
     label.textContent = base ? `${fmt(servings, "dec")} ${unitFor(servings)}` : `${fmt(factor, "frac")}×`;
-    // "1×" says nothing; cook mode hides it (style.css: .scaler.plain).
+    // Cook mode hides a plain "1×".
     scaler.classList.toggle("plain", !base && factor === 1);
   }
 
@@ -157,7 +152,6 @@ const T = window.T || {};
   label.addEventListener("click", () => { servings = base; factor = 1; update(); });
 })();
 
-// ---------- Recipe: cook mode + tick-off ----------
 (function () {
   const btn = document.getElementById("cook");
   if (!btn) return;
@@ -166,7 +160,7 @@ const T = window.T || {};
   async function keepAwake() {
     try {
       if ("wakeLock" in navigator) lock = await navigator.wakeLock.request("screen");
-    } catch (_) { /* needs https or localhost; ignore */ }
+    } catch (_) { /* needs https or localhost */ }
   }
 
   function markCurrent() {

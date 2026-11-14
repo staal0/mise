@@ -6,10 +6,7 @@ import (
 	xhtml "golang.org/x/net/html"
 )
 
-// microdata extracts schema.org Microdata (itemscope/itemprop attributes)
-// from a parsed page and returns each top-level item as a JSON-LD-shaped
-// map, so it can go through the same conversion as JSON-LD. Nested items
-// (e.g. a Recipe inside a WebPage) become nested maps.
+// microdata returns schema.org Microdata items as JSON-LD-shaped maps.
 func microdata(doc *xhtml.Node) []any {
 	var items []any
 	var walk func(*xhtml.Node)
@@ -18,8 +15,6 @@ func microdata(doc *xhtml.Node) []any {
 			if !hasAttr(n, "itemprop") {
 				items = append(items, parseItem(n))
 			}
-			// Items nested via itemprop are handled by parseItem; items
-			// nested without itemprop are still separate top-level items.
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			walk(c)
@@ -53,7 +48,7 @@ func parseItem(scope *xhtml.Node) map[string]any {
 					props[name] = append(props[name], v)
 				}
 			}
-			if !isScope { // a nested item's properties belong to it, not us
+			if !isScope {
 				walk(c)
 			}
 		}
@@ -74,7 +69,6 @@ func parseItem(scope *xhtml.Node) map[string]any {
 	return m
 }
 
-// propValue follows the Microdata rules for an element's value.
 func propValue(n *xhtml.Node) string {
 	if v, ok := attrOK(n, "content"); ok {
 		return v
@@ -96,19 +90,16 @@ func propValue(n *xhtml.Node) string {
 	return textContent(n)
 }
 
-// headingTags render as section headings ("### ...") in extracted text.
 var headingTags = map[string]bool{"h1": true, "h2": true, "h3": true, "h4": true, "h5": true, "h6": true}
 
-// isLeadHeading reports whether n is a <strong>/<b> that opens a block and
-// ends with a line break: "<p><strong>Bake<br></strong>Put it in…</p>",
-// a common way to write sub-headings in recipe instructions.
+// isLeadHeading matches sub-headings written as <p><strong>Bake<br></strong>…</p>.
 func isLeadHeading(n *xhtml.Node) bool {
 	if n.Data != "strong" && n.Data != "b" || n.Parent == nil || !blockTags[n.Parent.Data] {
 		return false
 	}
 	for c := n.Parent.FirstChild; c != n; c = c.NextSibling {
 		if c.Type != xhtml.TextNode || strings.TrimSpace(c.Data) != "" {
-			return false // something precedes it
+			return false
 		}
 	}
 	last := n.LastChild
@@ -127,11 +118,7 @@ var blockTags = map[string]bool{
 	"h1": true, "h2": true, "h3": true, "h4": true, "h5": true, "h6": true, "ol": true, "ul": true,
 }
 
-// textContent returns an element's text, with a newline at block
-// boundaries so multi-paragraph instructions split into steps, and
-// sub-headings marked "### ". Text stops at the first nested property:
-// some sites put e.g. "description" on a container that wraps the whole
-// recipe, and the other properties' text doesn't belong in it.
+// textContent stops at the first nested property: some sites wrap the whole recipe in one.
 func textContent(root *xhtml.Node) string {
 	var b strings.Builder
 	stopped := false
@@ -171,10 +158,7 @@ func textContent(root *xhtml.Node) string {
 	return strings.TrimSpace(b.String())
 }
 
-// leadingParagraphs returns the opening paragraphs of an element and stops
-// at the first box-like element after them. Some sites put "description"
-// on a container that also holds the recipe card, ads and so on; the intro
-// paragraphs come first, the rest isn't description.
+// leadingParagraphs keeps only the intro: sites put "description" on containers holding ads etc.
 func leadingParagraphs(root *xhtml.Node) string {
 	if _, ok := attrOK(root, "content"); ok || root.Data == "meta" {
 		return propValue(root)
@@ -198,11 +182,11 @@ func leadingParagraphs(root *xhtml.Node) string {
 				}
 			case blockTags[c.Data] && c.Data != "br":
 				if len(parts) > 0 {
-					stop = true // intro is over
+					stop = true
 				} else {
-					walk(c) // the intro may be wrapped in a div
+					walk(c)
 				}
-			default: // inline element (a, strong, span, …)
+			default:
 				if t := textContent(c); t != "" {
 					parts = append(parts, t)
 				}

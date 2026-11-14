@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// uiLangs lists the supported interface languages in toggle order.
 var uiLangs = []string{"en", "da"}
 
 var translations = map[string]map[string]string{
@@ -97,7 +96,6 @@ var translations = map[string]map[string]string{
 	},
 }
 
-// langNames label the language versions of a recipe.
 var langNames = map[string]string{"da": "Dansk", "en": "English", "sv": "Svenska", "no": "Norsk", "nb": "Norsk", "de": "Deutsch", "fr": "Français", "it": "Italiano", "es": "Español"}
 
 func langName(code string) string {
@@ -107,8 +105,6 @@ func langName(code string) string {
 	return strings.ToUpper(code)
 }
 
-// uiLang picks the interface language: the "lang" cookie if set, otherwise
-// the browser's Accept-Language, otherwise English.
 func uiLang(r *http.Request) string {
 	if c, err := r.Cookie("lang"); err == nil && translations[c.Value] != nil {
 		return c.Value

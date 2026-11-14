@@ -1,7 +1,3 @@
-// Package importer creates recipes from schema.org Recipe data found in web
-// pages, JSON files, folders and zip archives. It is deliberately lenient so
-// that exports from other recipe apps (which use schema.org-like field names)
-// import without app-specific code.
 package importer
 
 import (
@@ -33,27 +29,18 @@ import (
 
 const userAgent = "mise-recipes/1.0 (+https://github.com/staal0/mise)"
 
-// Client is the HTTP client used for imports.
 var Client = &http.Client{Timeout: 30 * time.Second}
 
-// Found is a recipe ready to be saved, plus where its image can be fetched.
 type Found struct {
-	Recipe *recipe.Recipe
-	// ImageURL is an absolute http(s) URL, or empty.
-	ImageURL string
-	// imageFS/imagePath locate an image inside a local folder or zip.
-	imageFS   fs.FS
-	imagePath string
-	// explicitLang is true when the source declared inLanguage.
+	Recipe       *recipe.Recipe
+	ImageURL     string
+	imageFS      fs.FS
+	imagePath    string
 	explicitLang bool
-	// servings is the bare count RecipeYield was built from, if any.
+	// servings is the bare count RecipeYield was built from.
 	servings string
 }
 
-// ---------------------------------------------------------------- sources
-
-// FromURL fetches a URL. HTML pages are searched for JSON-LD; JSON responses
-// are parsed directly. header is added to the request (may be nil).
 func FromURL(ctx context.Context, rawURL string, header http.Header) ([]Found, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
 	if err != nil {
@@ -99,8 +86,6 @@ func FromURL(ctx context.Context, rawURL string, header http.Header) ([]Found, e
 	return found, nil
 }
 
-// FromPath imports a .json/.html file, a folder of them (recursively) or a
-// .zip archive of them. Images next to each file are picked up.
 func FromPath(p string) ([]Found, error) {
 	st, err := os.Stat(p)
 	if err != nil {
@@ -114,7 +99,7 @@ func FromPath(p string) ([]Found, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Not closed: found images are read from the archive when saving.
+		// Not closed: images are read from the archive when saving.
 		return fromFS(zr, ".")
 	default:
 		return fromFS(os.DirFS(filepath.Dir(p)), filepath.Base(p))
@@ -167,8 +152,6 @@ func fromFS(fsys fs.FS, root string) ([]Found, error) {
 	return all, nil
 }
 
-// findLocalImage resolves a relative image reference, or failing that looks
-// for an image file in the recipe's folder (or an "images" subfolder).
 func (f *Found) findLocalImage(fsys fs.FS, dir string) {
 	if strings.HasPrefix(f.ImageURL, "http://") || strings.HasPrefix(f.ImageURL, "https://") {
 		return
@@ -190,7 +173,7 @@ func (f *Found) findLocalImage(fsys fs.FS, dir string) {
 			}
 		}
 	}
-	// A folder with many images is a shared folder; don't guess.
+	// Many images means a shared folder; don't guess.
 	if len(candidates) == 0 || len(candidates) > 3 {
 		return
 	}
@@ -205,9 +188,6 @@ func exists(fsys fs.FS, p string) bool {
 	return err == nil
 }
 
-// ---------------------------------------------------------------- parsing
-
-// ParseHTML extracts schema.org Recipes from JSON-LD blocks in an HTML page.
 func ParseHTML(body io.Reader) ([]Found, error) {
 	doc, err := xhtml.Parse(body)
 	if err != nil {
@@ -240,14 +220,13 @@ func ParseHTML(body io.Reader) ([]Found, error) {
 	}
 	walk(doc)
 	if len(found) == 0 {
-		// No JSON-LD recipe: try schema.org Microdata (itemprop attributes).
 		found = collect(microdata(doc), false)
 	}
 	if len(found) == 0 {
 		return nil, errors.New("no schema.org Recipe found on the page (neither JSON-LD nor Microdata)")
 	}
 	if r := found[0].Recipe; pageLang != "" && r.HeadingLang != pageLang {
-		// The page's declared language beats our guess (but not explicit inLanguage).
+		// <html lang> beats detection, but not an explicit inLanguage.
 		if !found[0].explicitLang {
 			r.HeadingLang = pageLang
 			r.Notes = retitleNotes(r.Notes, pageLang)
@@ -259,8 +238,6 @@ func ParseHTML(body io.Reader) ([]Found, error) {
 	return found[:1], nil // a page is one recipe; extra matches are usually duplicates
 }
 
-// ParseJSON parses JSON-LD or plain recipe JSON (a recipe object, a list of
-// them, or an object containing them).
 func ParseJSON(data []byte) ([]Found, error) {
 	var v any
 	if err := json.Unmarshal(data, &v); err != nil {
@@ -273,9 +250,7 @@ func ParseJSON(data []byte) ([]Found, error) {
 	return found, nil
 }
 
-// collect finds recipe objects anywhere in v. With loose set, objects that
-// look like recipes (name + ingredients/instructions) count even without
-// "@type": "Recipe".
+// loose also accepts objects without @type that look like recipes.
 func collect(v any, loose bool) []Found {
 	var out []Found
 	var walk func(any)
@@ -331,10 +306,8 @@ var (
 	punctRe = regexp.MustCompile(`\s+([.,;:!?])`)
 )
 
-// clean unescapes HTML entities (sites often double-encode), strips tags
-// and collapses whitespace.
 func clean(s string) string {
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 2; i++ { // sites often double-encode entities
 		s = html.UnescapeString(s)
 	}
 	s = tagRe.ReplaceAllString(s, " ")
@@ -406,11 +379,11 @@ func convert(m map[string]any) Found {
 		Keywords:       list(first(m, "keywords", "tags")),
 		Source:         str(first(m, "isBasedOn", "orgURL", "source")),
 	}
-	// Some apps split the yield into a number and a unit ("4" + "items").
+	// Some apps split the yield: "4" + "items".
 	if q := str(m["recipeYieldQuantity"]); q != "" && q != "0" && recipe.LeadingNumber(r.RecipeYield) == 0 {
 		r.RecipeYield = strings.TrimSpace(q + " " + r.RecipeYield)
 	}
-	// The word for a bare count depends on the language, detected below.
+	// The word depends on the language, detected below.
 	servings := ""
 	if r.RecipeYield == "" {
 		if s := str(m["recipeServings"]); s != "" && s != "0" {
@@ -420,7 +393,7 @@ func convert(m map[string]any) Found {
 	r.PrepTime, _ = recipe.ToISODuration(str(m["prepTime"]))
 	r.CookTime, _ = recipe.ToISODuration(str(first(m, "cookTime", "performTime")))
 	r.TotalTime, _ = recipe.ToISODuration(str(m["totalTime"]))
-	// A total shorter than the cooking time means the source swapped them.
+	// Some sources swap cook and total time.
 	if c, ok1 := recipe.ParseISODuration(r.CookTime); ok1 {
 		if t, ok2 := recipe.ParseISODuration(r.TotalTime); ok2 && t < c {
 			r.CookTime, r.TotalTime = r.TotalTime, r.CookTime
@@ -428,7 +401,6 @@ func convert(m map[string]any) Found {
 	}
 	r.Ingredients = groups(first(m, "recipeIngredient", "ingredients"), ingredientText)
 	r.Instructions = instructions(m["recipeInstructions"])
-	// The language only decides which section headings the file gets.
 	r.HeadingLang = recipe.Lang(str(m["inLanguage"]))
 	explicit := r.HeadingLang != ""
 	if !explicit {
@@ -441,7 +413,6 @@ func convert(m map[string]any) Found {
 	return Found{Recipe: r, ImageURL: image(m["image"]), explicitLang: explicit, servings: servings}
 }
 
-// yield prefers a descriptive value ("4 servings") over a bare number.
 func yield(v any) string {
 	if l, ok := v.([]any); ok {
 		best := ""
@@ -472,8 +443,6 @@ func image(v any) string {
 	return ""
 }
 
-// ingredientText handles plain strings and structured ingredient objects
-// ({display}, {quantity, unit, food, note}, {originalText}, ...).
 func ingredientText(v any) string {
 	m, ok := v.(map[string]any)
 	if !ok {
@@ -503,8 +472,6 @@ func ingredientText(v any) string {
 	return ""
 }
 
-// groups turns a list into titled groups. An item object with a non-empty
-// "title" starts a new group (a common way apps mark sections).
 func groups(v any, text func(any) string) []recipe.Group {
 	var items []any
 	switch t := v.(type) {
@@ -523,7 +490,7 @@ func groups(v any, text func(any) string) []recipe.Group {
 		if m, ok := it.(map[string]any); ok {
 			title = str(m["title"])
 		}
-		// A "### Heading" line (from HTML sub-headings) starts a section.
+		// "### " lines come from HTML sub-headings.
 		if line, ok := it.(string); ok && strings.HasPrefix(strings.TrimSpace(line), "### ") {
 			out = append(out, recipe.Group{Title: clean(strings.TrimSpace(line)[4:])})
 			continue
@@ -606,8 +573,6 @@ func flatten(v any) []any {
 	return []any{v}
 }
 
-// notes collects free-form "notes" ({title,text} objects or strings) and a
-// tool/equipment list into Markdown sections.
 func notes(m map[string]any, lang string) string {
 	h := recipe.SectionHeadings(lang)
 	var b strings.Builder
@@ -639,7 +604,6 @@ func notes(m map[string]any, lang string) string {
 	return strings.TrimSpace(b.String())
 }
 
-// servingsYield turns a bare count into "4 portioner" / "4 servings".
 func servingsYield(n, lang string) string {
 	one := n == "1"
 	switch recipe.Lang(lang) {
@@ -655,7 +619,6 @@ func servingsYield(n, lang string) string {
 	return n + " servings"
 }
 
-// retitleNotes swaps the generated Notes/Equipment headings to another language.
 func retitleNotes(notes, lang string) string {
 	to := recipe.SectionHeadings(lang)
 	for _, from := range []recipe.Headings{recipe.SectionHeadings("en"), recipe.SectionHeadings("da")} {
@@ -673,8 +636,6 @@ var (
 	wordRe = regexp.MustCompile(`[\p{L}]+`)
 )
 
-// DetectLang guesses whether a recipe is Danish or English from common
-// words. It returns "" when unsure.
 func DetectLang(r *recipe.Recipe) string {
 	var text strings.Builder
 	text.WriteString(r.Name + " " + r.Description)
@@ -704,10 +665,6 @@ func DetectLang(r *recipe.Recipe) string {
 	return ""
 }
 
-// ---------------------------------------------------------------- saving
-
-// Save assigns a unique slug, stores the image next to the recipe file and
-// writes the recipe into dir. header is sent when downloading the image.
 func Save(ctx context.Context, dir string, f Found, header http.Header) error {
 	r := f.Recipe
 	if r.Name == "" {
@@ -789,7 +746,7 @@ func writeImage(r io.Reader, dir, name string) (string, error) {
 		return "", err
 	}
 	if _, err := io.Copy(f, io.LimitReader(r, 20<<20)); err != nil {
-		_ = f.Close() // the copy error is the one worth reporting
+		_ = f.Close()
 		return "", err
 	}
 	return name, f.Close()

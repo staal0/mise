@@ -1,4 +1,3 @@
-// Command mise is a tiny, flat-file recipe manager.
 package main
 
 import (

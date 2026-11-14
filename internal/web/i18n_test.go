@@ -28,7 +28,6 @@ func TestUILang(t *testing.T) {
 	}
 }
 
-// Every language must define every key, or the UI shows blanks.
 func TestTranslationsComplete(t *testing.T) {
 	for lang, m := range translations {
 		for k := range translations["en"] {

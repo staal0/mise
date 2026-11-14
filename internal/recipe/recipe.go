@@ -1,5 +1,3 @@
-// Package recipe defines the on-disk recipe format: Markdown with YAML
-// frontmatter whose field names follow schema.org/Recipe.
 package recipe
 
 import (
@@ -13,8 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Recipe is a single recipe. Frontmatter fields use schema.org/Recipe names
-// (except Source, which maps to schema.org's isBasedOn).
+// Recipe fields use schema.org/Recipe names; Source is isBasedOn.
 type Recipe struct {
 	Name           string     `yaml:"name"`
 	Description    string     `yaml:"description,omitempty"`
@@ -30,21 +27,19 @@ type Recipe struct {
 	Source         string     `yaml:"source,omitempty"`
 
 	Slug         string  `yaml:"-"`
-	Lang         string  `yaml:"-"` // from a "<slug>.<lang>.md" filename; "" for the default file
-	HeadingLang  string  `yaml:"-"` // language for section headings when writing; defaults to Lang
-	Intro        string  `yaml:"-"` // markdown before the first "##" section
+	Lang         string  `yaml:"-"` // from a "<slug>.<lang>.md" filename
+	HeadingLang  string  `yaml:"-"` // for writing; defaults to Lang
+	Intro        string  `yaml:"-"`
 	Ingredients  []Group `yaml:"-"`
 	Instructions []Group `yaml:"-"`
-	Notes        string  `yaml:"-"` // any other "##" sections, as raw markdown
+	Notes        string  `yaml:"-"`
 }
 
-// Group is an optionally titled list of ingredients or steps ("### Sauce").
 type Group struct {
 	Title string
 	Items []string
 }
 
-// Tags returns categories, cuisines and keywords combined, deduplicated.
 func (r *Recipe) Tags() []string {
 	seen := map[string]bool{}
 	var out []string
@@ -60,7 +55,6 @@ func (r *Recipe) Tags() []string {
 	return out
 }
 
-// StringList accepts either a YAML list or a comma-separated string.
 type StringList []string
 
 func (s *StringList) UnmarshalYAML(n *yaml.Node) error {
@@ -87,7 +81,6 @@ func (s StringList) MarshalYAML() (any, error) {
 	return n, nil
 }
 
-// SplitList splits a comma-separated string into trimmed, non-empty parts.
 func SplitList(v string) []string {
 	var out []string
 	for _, p := range strings.Split(v, ",") {
@@ -115,7 +108,6 @@ func sectionKind(heading string) string {
 	return "other"
 }
 
-// Parse reads a recipe file. slug is the filename without ".md".
 func Parse(slug string, data []byte) (*Recipe, error) {
 	text := strings.ReplaceAll(string(data), "\r\n", "\n")
 	r := &Recipe{Slug: slug}
@@ -152,7 +144,7 @@ func Parse(slug string, data []byte) (*Recipe, error) {
 		if strings.HasPrefix(line, "## ") {
 			section = sectionKind(line[3:])
 			if section != "other" && r.HeadingLang == "" {
-				// Remember the heading language so a re-save keeps it.
+				// Remember Danish headings so a re-save keeps them.
 				switch strings.ToLower(strings.TrimSpace(line[3:])) {
 				case "ingredienser", "fremgangsmåde", "fremgangsmaade", "instruktioner":
 					r.HeadingLang = "da"
@@ -220,10 +212,8 @@ func dropEmpty(gs []Group) []Group {
 	return out
 }
 
-// Headings are the section names written to recipe files.
 type Headings struct{ Ingredients, Instructions, Notes, Equipment string }
 
-// SectionHeadings returns headings in the recipe's language (English default).
 func SectionHeadings(lang string) Headings {
 	if Lang(lang) == "da" {
 		return Headings{"Ingredienser", "Fremgangsmåde", "Noter", "Udstyr"}
@@ -231,14 +221,12 @@ func SectionHeadings(lang string) Headings {
 	return Headings{"Ingredients", "Instructions", "Notes", "Equipment"}
 }
 
-// Lang normalizes a language tag to its lowercase base ("da-DK" → "da").
 func Lang(tag string) string {
 	base, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(tag)), "-")
 	base, _, _ = strings.Cut(base, "_")
 	return base
 }
 
-// Markdown renders the recipe back to the file format.
 func (r *Recipe) Markdown() ([]byte, error) {
 	var b bytes.Buffer
 	enc := yaml.NewEncoder(&b)
@@ -290,7 +278,6 @@ var danish = strings.NewReplacer("æ", "ae", "ø", "oe", "å", "aa", "ä", "a", 
 	"é", "e", "è", "e", "ê", "e", "á", "a", "à", "a", "í", "i", "ó", "o", "ú", "u", "ñ", "n", "ç", "c", "ß", "ss", "&", " and ")
 var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
 
-// Slugify turns a recipe name into a filename-safe slug.
 func Slugify(name string) string {
 	s := nonSlug.ReplaceAllString(danish.Replace(strings.ToLower(name)), "-")
 	s = strings.Trim(s, "-")
@@ -303,7 +290,6 @@ func Slugify(name string) string {
 	return s
 }
 
-// UniqueSlug returns a slug for name that doesn't collide with existing files.
 func UniqueSlug(dir, name string) string {
 	base := Slugify(name)
 	slug := base
@@ -315,7 +301,6 @@ func UniqueSlug(dir, name string) string {
 	}
 }
 
-// Filename is the recipe's file name: "<slug>.md" or "<slug>.<lang>.md".
 func (r *Recipe) Filename() string {
 	if r.Lang != "" {
 		return r.Slug + "." + r.Lang + ".md"
@@ -323,7 +308,6 @@ func (r *Recipe) Filename() string {
 	return r.Slug + ".md"
 }
 
-// Save writes the recipe to its file in dir. r.Slug must be set.
 func Save(dir string, r *Recipe) error {
 	data, err := r.Markdown()
 	if err != nil {

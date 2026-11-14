@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// Segment is a piece of an ingredient line. Quantity segments can be scaled.
 type Segment struct {
 	Text  string
 	IsQty bool
@@ -27,8 +26,6 @@ const numPat = `(?:\d+\s+\d+/\d+|\d+\s*[` + fracGlyphs + `]|\d+/\d+|\d+(?:[.,]\d
 
 var leadQty = regexp.MustCompile(`^(` + numPat + `)(?:(\s*[-–]\s*)(` + numPat + `))?`)
 
-// SplitQuantity finds a leading quantity (or range like "2-3") in an
-// ingredient line so it can be scaled.
 func SplitQuantity(line string) []Segment {
 	m := leadQty.FindStringSubmatchIndex(line)
 	if m == nil {
@@ -58,7 +55,6 @@ func parseNumber(s string) (float64, string, bool) {
 	s = strings.TrimSpace(s)
 	style := "dec"
 	var total float64
-	// Trailing unicode fraction glyph, e.g. "1½" or "½".
 	if r := []rune(s); len(r) > 0 {
 		if g, ok := glyphValue[r[len(r)-1]]; ok {
 			total += g
@@ -91,7 +87,6 @@ func parseNumber(s string) (float64, string, bool) {
 	return total, style, true
 }
 
-// LeadingNumber returns the first number in s (e.g. 4 from "4 servings").
 func LeadingNumber(s string) float64 {
 	segs := SplitQuantity(strings.TrimSpace(s))
 	if len(segs) > 0 && segs[0].IsQty {
@@ -102,7 +97,6 @@ func LeadingNumber(s string) float64 {
 
 var isoDur = regexp.MustCompile(`^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$`)
 
-// ParseISODuration parses the subset of ISO 8601 durations used by recipes.
 func ParseISODuration(s string) (time.Duration, bool) {
 	m := isoDur.FindStringSubmatch(strings.ToUpper(strings.TrimSpace(s)))
 	if m == nil || s == "P" || s == "PT" {
@@ -112,10 +106,8 @@ func ParseISODuration(s string) (time.Duration, bool) {
 	return n(1)*24*time.Hour + n(2)*time.Hour + n(3)*time.Minute + n(4)*time.Second, true
 }
 
-// HumanDuration renders "PT1H30M" as "1 h 30 min"; non-ISO input is returned as-is.
 func HumanDuration(s string) string { return FormatDuration(s, "h") }
 
-// FormatDuration is HumanDuration with a custom hour unit (e.g. "t" in Danish).
 func FormatDuration(s, hourUnit string) string {
 	d, ok := ParseISODuration(s)
 	if !ok {
@@ -138,9 +130,7 @@ var (
 	plainNum  = regexp.MustCompile(`^\d+$`)
 )
 
-// ToISODuration converts free text like "1 hour 30 minutes", "45 min" or
-// "1 time 15 minutter" to ISO 8601. Already-ISO input is passed through.
-// Unrecognized text is returned unchanged with ok=false.
+// ToISODuration accepts free text like "1 time 15 minutter"; ok=false if unrecognized.
 func ToISODuration(s string) (string, bool) {
 	s = strings.TrimSpace(s)
 	if s == "" {

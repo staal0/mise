@@ -158,11 +158,9 @@ func TestLanguageVersions(t *testing.T) {
 	if da.Name != "Pandekager" || da.Lang != "da" || da.Filename() != "pancakes.da.md" {
 		t.Errorf("da version: %+v", da)
 	}
-	// Inherited from the default file:
 	if da.Image != "p.jpg" || da.PrepTime != "PT10M" || len(da.Ingredients) != 1 {
 		t.Errorf("not inherited: %+v", da)
 	}
-	// Own content wins:
 	if da.Instructions[0].Items[0] != "Steg." {
 		t.Errorf("instructions: %+v", da.Instructions)
 	}

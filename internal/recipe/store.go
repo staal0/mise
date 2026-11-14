@@ -8,21 +8,18 @@ import (
 	"time"
 )
 
-// Store reads recipes from a directory and keeps the parsed files in
-// memory. Each call checks the files' modification times and sizes and
-// re-reads only files that changed, so edits made in an editor show up
-// immediately while unchanged files are never parsed twice.
+// Store caches parsed files and re-reads only those whose mtime or size changed.
 type Store struct {
 	Dir string
 
 	mu    sync.Mutex
-	files map[string]*cachedFile // keyed by file name
+	files map[string]*cachedFile
 }
 
 type cachedFile struct {
 	mod  time.Time
 	size int64
-	r    *Recipe // nil if parsing failed
+	r    *Recipe
 	err  error
 }
 
@@ -30,8 +27,6 @@ func NewStore(dir string) *Store {
 	return &Store{Dir: dir, files: map[string]*cachedFile{}}
 }
 
-// All returns every recipe, grouped by language version, plus parse
-// errors keyed by file name.
 func (s *Store) All() ([]*Entry, map[string]error, error) {
 	paths, err := filepath.Glob(filepath.Join(s.Dir, "*.md"))
 	if err != nil {
@@ -55,7 +50,7 @@ func (s *Store) All() ([]*Entry, map[string]error, error) {
 		}
 		parsed[name] = r
 	}
-	for name := range s.files { // forget deleted files
+	for name := range s.files {
 		if !seen[name] {
 			delete(s.files, name)
 		}
@@ -63,10 +58,8 @@ func (s *Store) All() ([]*Entry, map[string]error, error) {
 	return buildEntries(parsed), errs, nil
 }
 
-// Get returns one recipe and its language versions, reading only that
-// recipe's files. It returns os.ErrNotExist for unknown slugs.
 func (s *Store) Get(slug string) (*Entry, error) {
-	// Refuse anything that could leave the directory or act as a pattern.
+	// Refuse paths and glob patterns.
 	if slug == "" || strings.HasPrefix(slug, ".") || strings.ContainsAny(slug, `/\*?[`) {
 		return nil, os.ErrNotExist
 	}
@@ -96,7 +89,6 @@ func (s *Store) Get(slug string) (*Entry, error) {
 	return buildEntries(parsed)[0], nil
 }
 
-// load returns the parsed file, re-reading it only if it changed.
 // s.mu must be held.
 func (s *Store) load(name string) (*Recipe, error) {
 	path := filepath.Join(s.Dir, name)

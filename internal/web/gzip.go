@@ -9,8 +9,6 @@ import (
 
 var gzipPool = sync.Pool{New: func() any { return gzip.NewWriter(nil) }}
 
-// gzipResponses compresses text responses (pages, CSS, JS) for clients
-// that accept gzip. Images are left alone: they're already compressed.
 func gzipResponses(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", "Accept-Encoding")
@@ -34,8 +32,6 @@ func acceptsGzip(r *http.Request) bool {
 	return false
 }
 
-// gzipWriter decides at WriteHeader time whether to compress, based on the
-// response's content type.
 type gzipWriter struct {
 	http.ResponseWriter
 	gz          *gzip.Writer
@@ -81,7 +77,7 @@ func (g *gzipWriter) Write(b []byte) (int, error) {
 
 func (g *gzipWriter) close() {
 	if g.gz != nil {
-		_ = g.gz.Close() // fails only if the client has gone
+		_ = g.gz.Close()
 		gzipPool.Put(g.gz)
 	}
 }

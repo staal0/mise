@@ -33,7 +33,6 @@ func TestImportPreviewThenSave(t *testing.T) {
 		return w
 	}
 
-	// 1. Preview: shows the recipe, writes nothing.
 	w := post("/import", url.Values{"url": {site.URL}})
 	body := w.Body.String()
 	if w.Code != 200 || !strings.Contains(body, "Gem opskrift") || !strings.Contains(body, "4 dl vand") {
@@ -43,7 +42,6 @@ func TestImportPreviewThenSave(t *testing.T) {
 		t.Fatalf("preview wrote files: %v", files)
 	}
 
-	// 2. Save edited Markdown.
 	md := "---\nname: Mine boller\n---\n\n## Ingredienser\n\n- 4 dl vand\n\n## Fremgangsmåde\n\n1. Bag.\n"
 	w = post("/import/save", url.Values{"markdown": {md}, "url": {site.URL}})
 	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/r/mine-boller" {
@@ -54,13 +52,11 @@ func TestImportPreviewThenSave(t *testing.T) {
 		t.Fatalf("saved file: %v\n%s", err, saved)
 	}
 
-	// 3. A recipe named like the page's already exists: the preview warns.
 	post("/import/save", url.Values{"markdown": {"---\nname: Boller\n---\n"}})
 	if body := post("/import", url.Values{"url": {site.URL}}).Body.String(); !strings.Contains(body, "allerede") {
 		t.Error("no duplicate warning")
 	}
 
-	// 4. Missing name is refused and the form is shown again.
 	if w := post("/import/save", url.Values{"markdown": {"## Ingredienser\n- salt\n"}}); w.Code != 422 {
 		t.Errorf("nameless save: %d", w.Code)
 	}

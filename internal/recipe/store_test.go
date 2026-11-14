@@ -39,8 +39,6 @@ func TestStoreSeesChanges(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 
-	// Edit the default file: the change shows up, and the Danish version
-	// inherits the new image rather than a cached old one.
 	write("a.md", "---\nname: A2\nimage: new.jpg\n---\n")
 	if got := names(); got["a"] != "A2" {
 		t.Errorf("edit not seen: %v", got)
@@ -53,7 +51,6 @@ func TestStoreSeesChanges(t *testing.T) {
 		t.Errorf("stale inheritance: %+v", da)
 	}
 
-	// Add and delete files.
 	write("b.md", "---\nname: B\n---\n")
 	if got := names(); got["b"] != "B" {
 		t.Errorf("new file not seen: %v", got)
@@ -68,7 +65,6 @@ func TestStoreSeesChanges(t *testing.T) {
 		t.Errorf("Get deleted: %v", err)
 	}
 
-	// Broken file: reported, then fixed.
 	write("c.md", "---\nname: [unclosed\n---\n")
 	if _, errs, _ := s.All(); errs["c.md"] == nil {
 		t.Error("parse error not reported")

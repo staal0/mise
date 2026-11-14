@@ -6,20 +6,13 @@ import (
 	"strings"
 )
 
-// Entry is one recipe with all its language versions:
-//
-//	frikadeller.md     the default version (any language)
-//	frikadeller.en.md  an English version
-//
-// A language version only needs the fields it changes; anything it leaves
-// out is taken from the default version.
+// Entry is x.md plus versions like x.en.md, which inherit the fields they leave out.
 type Entry struct {
 	Slug     string
 	Default  *Recipe
-	Versions map[string]*Recipe // keyed by language code
+	Versions map[string]*Recipe // by language
 }
 
-// Pick returns the version in lang, or the default version.
 func (e *Entry) Pick(lang string) *Recipe {
 	if v, ok := e.Versions[lang]; ok {
 		return v
@@ -27,7 +20,6 @@ func (e *Entry) Pick(lang string) *Recipe {
 	return e.Default
 }
 
-// Langs returns the language codes of the extra versions, sorted.
 func (e *Entry) Langs() []string {
 	var out []string
 	for l := range e.Versions {
@@ -37,7 +29,6 @@ func (e *Entry) Langs() []string {
 	return out
 }
 
-// All returns the default version followed by the language versions.
 func (e *Entry) All() []*Recipe {
 	out := []*Recipe{e.Default}
 	for _, l := range e.Langs() {
@@ -50,7 +41,6 @@ func (e *Entry) All() []*Recipe {
 
 var variantRe = regexp.MustCompile(`^(.+)\.([a-z]{2,3})$`)
 
-// splitFilename turns "frikadeller.en.md" into ("frikadeller", "en").
 func splitFilename(name string) (slug, lang string) {
 	base := strings.TrimSuffix(name, ".md")
 	if m := variantRe.FindStringSubmatch(base); m != nil {
@@ -59,21 +49,15 @@ func splitFilename(name string) (slug, lang string) {
 	return base, ""
 }
 
-// LoadAll reads every recipe in dir, grouping language versions. Files that
-// fail to parse are reported in errs (keyed by filename) rather than
-// aborting the load. Use a Store to avoid re-reading unchanged files.
 func LoadAll(dir string) (entries []*Entry, errs map[string]error, err error) {
 	return NewStore(dir).All()
 }
 
-// Load returns the entry for slug, or os.ErrNotExist.
 func Load(dir, slug string) (*Entry, error) {
 	return NewStore(dir).Get(slug)
 }
 
-// buildEntries groups parsed files ("frikadeller.md", "frikadeller.en.md")
-// into entries. It works on copies, so the parsed files can be cached and
-// a language version always inherits from the current default file.
+// buildEntries copies the parsed files, so cached files are never modified.
 func buildEntries(files map[string]*Recipe) []*Entry {
 	bySlug := map[string]*Entry{}
 	for _, parsed := range files {
@@ -112,7 +96,6 @@ func buildEntries(files map[string]*Recipe) []*Entry {
 	return entries
 }
 
-// inherit fills fields left empty in v from base.
 func inherit(v, base *Recipe) {
 	str := func(dst *string, src string) {
 		if *dst == "" {

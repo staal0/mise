@@ -44,7 +44,6 @@ func TestFromHTML(t *testing.T) {
 	}
 }
 
-// Recipe-app exports (Mealie-style JSON) must import via the generic path.
 func TestLooseJSON(t *testing.T) {
 	const js = `{"id":"abc","name":"Soup","recipeYield":"","recipeServings":4,
 	 "prepTime":"10 minutes","performTime":"1 hour","tags":[{"name":"winter"}],

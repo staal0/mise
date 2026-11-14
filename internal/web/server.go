@@ -1,4 +1,3 @@
-// Package web serves the recipe collection as a small website.
 package web
 
 import (
@@ -30,18 +29,15 @@ var templateFS embed.FS
 //go:embed static
 var staticFS embed.FS
 
-// Markdown for intros and notes. Raw HTML in recipe files is not rendered
-// (the renderer's safe default), since imported text comes from websites.
+// Raw HTML in recipe files is not rendered: imported text comes from websites.
 var (
 	mdParser   = parser.New()
 	mdRenderer = mdhtml.New()
 )
 
-// Version is shown in the page footer; main sets it from the build.
+// Version is set by main from the build.
 var Version = "dev"
 
-// versionInfo formats Version for display ("v1.0.1") and links released
-// versions to their release notes.
 func versionInfo() (label, url string) {
 	v := strings.TrimPrefix(Version, "v")
 	if v == "" || v == "dev" || !strings.ContainsAny(v[:1], "0123456789") {
@@ -71,7 +67,6 @@ func New(dir string) *Server {
 		"imageURL": imageURL,
 		"num":      func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) },
 		"lower":    strings.ToLower,
-		// yieldUnit returns "stk." for "4 stk.".
 		"yieldUnit": func(y string) string {
 			segs := recipe.SplitQuantity(strings.TrimSpace(y))
 			if len(segs) < 2 || !segs[0].IsQty {
@@ -88,12 +83,10 @@ func New(dir string) *Server {
 		"lang":         recipe.Lang,
 		"join":         strings.Join,
 		"jsonld":       jsonLD,
-		// searchText covers every language version, so search finds either.
 		"searchText": func(e *recipe.Entry) string {
 			var parts []string
 			for _, r := range e.All() {
-				// Name, tags and ingredients; descriptions are left out
-				// because long ones would bloat every card on the index.
+				// Descriptions are left out: long ones bloat the index.
 				parts = append(parts, r.Name)
 				parts = append(parts, r.Tags()...)
 				for _, g := range r.Ingredients {
@@ -150,34 +143,29 @@ func imagesOnly(h http.Handler) http.Handler {
 	})
 }
 
-// page is the data passed to every template.
 type page struct {
 	Title    string
-	Lang     string            // interface language
-	NextLang string            // language the toggle switches to
-	T        map[string]string // interface strings
+	Lang     string // UI language, not the recipe's
+	NextLang string
+	T        map[string]string
 
-	// index
 	Cards   []card
 	Tags    []string
 	Errors  map[string]error
 	Message string
 	URL     string
 
-	// recipe
 	R         *recipe.Recipe
 	BaseYield float64
 
-	// import preview
 	Markdown string
 	ImageURL string
 	Exists   bool
-	Others   []version // the other versions of this recipe
+	Others   []version
 }
 
 type version struct{ URL, Label string }
 
-// card is one recipe on the index: the entry plus the version to show.
 type card struct {
 	E *recipe.Entry
 	R *recipe.Recipe
@@ -192,8 +180,6 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	s.renderIndex(w, r, http.StatusOK, "", "")
 }
 
-// renderIndex shows the recipe list. msgKey is a translation key, detail is
-// appended to it (e.g. an error message).
 func (s *Server) renderIndex(w http.ResponseWriter, r *http.Request, status int, msg, url string) {
 	entries, errs, err := s.store.All()
 	if err != nil {
@@ -218,8 +204,6 @@ func (s *Server) renderIndex(w http.ResponseWriter, r *http.Request, status int,
 	s.render(w, status, "index.html", p)
 }
 
-// show renders a recipe in the requested version (?lang=), else the
-// version matching the interface language, else the default.
 func (s *Server) show(w http.ResponseWriter, r *http.Request) {
 	e, err := s.store.Get(r.PathValue("slug"))
 	if errors.Is(err, os.ErrNotExist) {
@@ -252,8 +236,7 @@ func (s *Server) show(w http.ResponseWriter, r *http.Request) {
 	s.render(w, 200, "recipe.html", p)
 }
 
-// importURL fetches a recipe and shows a preview. Nothing is saved until
-// the preview form is submitted to saveImport.
+// importURL only previews; saveImport writes the file.
 func (s *Server) importURL(w http.ResponseWriter, r *http.Request) {
 	t := translations[uiLang(r)]
 	u := strings.TrimSpace(r.FormValue("url"))
@@ -283,7 +266,6 @@ func (s *Server) renderPreview(w http.ResponseWriter, r *http.Request, status in
 	s.render(w, status, "preview.html", p)
 }
 
-// saveImport saves the (possibly edited) Markdown from the preview form.
 func (s *Server) saveImport(w http.ResponseWriter, r *http.Request) {
 	t := translations[uiLang(r)]
 	md := r.FormValue("markdown")
@@ -318,10 +300,9 @@ func (s *Server) render(w http.ResponseWriter, status int, name string, data any
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	_, _ = w.Write(b.Bytes()) // fails only if the client has gone
+	_, _ = w.Write(b.Bytes())
 }
 
-// jsonLD renders the recipe as schema.org JSON-LD, embedded in each page.
 func jsonLD(rc *recipe.Recipe) template.JS {
 	m := map[string]any{"@context": "https://schema.org", "@type": "Recipe", "name": rc.Name}
 	set := func(k string, v any) {
