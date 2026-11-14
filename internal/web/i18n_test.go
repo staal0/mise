@@ -2,6 +2,8 @@ package web
 
 import (
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -49,5 +51,22 @@ func TestPagesRender(t *testing.T) {
 				t.Errorf("%s %s: %d", lang, path, w.Code)
 			}
 		}
+	}
+}
+
+func TestNotesMarkdownIsRenderedSafely(t *testing.T) {
+	dir := t.TempDir()
+	md := "---\nname: X\n---\n\n## Notes\n\nUse **cold** butter.\n\n<script>alert(1)</script>\n"
+	if err := os.WriteFile(filepath.Join(dir, "x.md"), []byte(md), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	New(dir).Handler().ServeHTTP(w, httptest.NewRequest("GET", "/r/x", nil))
+	body := w.Body.String()
+	if !strings.Contains(body, "<strong>cold</strong>") {
+		t.Error("markdown not rendered")
+	}
+	if strings.Contains(body, "<script>alert(1)</script>") {
+		t.Error("raw HTML from the recipe file was rendered")
 	}
 }

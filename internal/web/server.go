@@ -17,7 +17,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/v2/parser"
+	mdhtml "github.com/yuin/goldmark/v2/renderer/html"
 
 	"github.com/staal0/mise/internal/importer"
 	"github.com/staal0/mise/internal/recipe"
@@ -28,6 +29,13 @@ var templateFS embed.FS
 
 //go:embed static
 var staticFS embed.FS
+
+// Markdown for intros and notes. Raw HTML in recipe files is not rendered
+// (the renderer's safe default), since imported text comes from websites.
+var (
+	mdParser   = parser.New()
+	mdRenderer = mdhtml.New()
+)
 
 type Server struct {
 	Dir  string
@@ -40,7 +48,8 @@ func New(dir string) *Server {
 		"segments": recipe.SplitQuantity,
 		"markdown": func(s string) template.HTML {
 			var b bytes.Buffer
-			if err := goldmark.Convert([]byte(s), &b); err != nil {
+			src := []byte(s)
+			if err := mdRenderer.Render(&b, src, mdParser.Parse(src)); err != nil {
 				return template.HTML(template.HTMLEscapeString(s))
 			}
 			return template.HTML(b.String())
